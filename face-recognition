@@ -4,6 +4,7 @@ import face_recognition
 
 # facial recognition library
 # do the same for bill gates, elon musk, and other people
+# find imaging data on google drive
 
 e_musk = face_recognition.load_image_file('Image/ElonMusk.jpg')
 e_musk = cv2.cvtColor(e_musk.cv2.COLOR_BGR2RGB)
