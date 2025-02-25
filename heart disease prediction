@@ -1,0 +1,91 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+def load_dataset(csv_path):
+    """
+    Load the heart disease dataset from a CSV file and print summary statistics.
+    """
+    df = pd.read_csv(csv_path)
+    print("First 5 rows:\n", df.head())
+    print("Last 5 rows:\n", df.tail())
+    print("Dataset shape:", df.shape)
+    df.info()
+    print("Missing values per column:\n", df.isnull().sum())
+    print("Statistical summary:\n", df.describe())
+    print("Target distribution:\n", df['target'].value_counts())
+    return df
+
+def prepare_data(df):
+    """
+    Separate the features and target, then split the dataset into training and testing sets.
+    """
+    X = df.drop(columns='target', axis=1)
+    y = df['target']
+    print("Features preview:\n", X.head())
+    print("Target preview:\n", y.head())
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=2)
+    
+    print("Total features shape:", X.shape)
+    print("Training set shape:", X_train.shape)
+    print("Test set shape:", X_test.shape)
+    return X_train, X_test, y_train, y_test
+
+def train_logistic_regression(X_train, y_train):
+    """
+    Train a logistic regression model on the provided training data.
+    """
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+    return model
+
+def evaluate_model(model, X, y, dataset_name="Dataset"):
+    """
+    Evaluate the model accuracy on a given dataset and print the results.
+    """
+    predictions = model.predict(X)
+    accuracy = accuracy_score(y, predictions)
+    print(f"Accuracy on {dataset_name}: {accuracy}")
+    return accuracy
+
+def predict_sample(model, sample_data):
+    """
+    Predict the target for a single sample and print the result.
+    """
+    sample_array = np.asarray(sample_data).reshape(1, -1)
+    prediction = model.predict(sample_array)
+    return prediction
+
+def main():
+    # Load and inspect the dataset
+    data_file = '/content/data.csv'
+    heart_df = load_dataset(data_file)
+    
+    # Prepare the features and target, then split into train/test sets
+    X_train, X_test, y_train, y_test = prepare_data(heart_df)
+    
+    # Train the logistic regression model
+    log_model = train_logistic_regression(X_train, y_train)
+    
+    # Evaluate the model on both training and test data
+    evaluate_model(log_model, X_train, y_train, "Training Data")
+    evaluate_model(log_model, X_test, y_test, "Test Data")
+    
+    # Sample input for prediction (adjust these values as needed)
+    sample_input = (62, 0, 0, 140, 268, 0, 0, 160, 0, 3.6, 0, 2, 2)
+    sample_prediction = predict_sample(log_model, sample_input)
+    print("Sample prediction result:", sample_prediction)
+    
+    if sample_prediction[0] == 0:
+        print("The person is unlikely to have heart disease.")
+    else:
+        print("The person is likely to have heart disease.")
+
+if __name__ == "__main__":
+    main()
+
+  
