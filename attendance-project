@@ -1,64 +1,116 @@
-# continuation from face recognition library
 import cv2
 import numpy as np
 import face_recognition
 import os
-from datetime import date
+from datetime import datetime  # Use datetime for timestamping
 
+ATTENDANCE_DIR = 'Attendance'
+CSV_FILE = 'Attendance.csv'
 
-path = 'Attendance'
-image = []
-names = []
-myList = os.listdir(path)
-print(myList)
-for c1 in myList:
-    curImg = cv2.imread(f'{path}/{c1}')
-    image.append(curImg)
-    names.append(os.path.splitexas(c1)[0])
-print(names)
+def load_images_and_names(directory):
+    """
+    Load images from the given directory and extract names from file names.
+    """
+    images = []
+    names = []
+    files = os.listdir(directory)
+    print("Found files:", files)
+    
+    for file in files:
+        img_path = os.path.join(directory, file)
+        img = cv2.imread(img_path)
+        if img is not None:
+            images.append(img)
+            # Split filename and use the base name (without extension) as the person's name
+            name, _ = os.path.splitext(file)
+            names.append(name)
+    print("Names extracted:", names)
+    return images, names
 
-def findEncodings(image):
-    encodeList = []
-    for img in image:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        encode = face_recodnition.face_encodings(img)[0]
-        encodeList.append(encode)
-    return encodeList
+def compute_face_encodings(images):
+    """
+    Compute face encodings for a list of images.
+    """
+    encoding_list = []
+    for img in images:
+        # Convert from BGR to RGB since face_recognition uses RGB format
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        encodings = face_recognition.face_encodings(rgb_img)
+        if encodings:  # If a face was found in the image
+            encoding_list.append(encodings[0])
+    return encoding_list
 
-def markAttendance(name):
+def record_attendance(name, csv_path=CSV_FILE):
+    """
+    Append the name and current time to the CSV file if the name is not already present.
+    """
+    try:
+        with open(csv_path, 'r+') as file:
+            lines = file.readlines()
+            recorded_names = [line.split(',')[0] for line in lines]
+            if name not in recorded_names:
+                now = datetime.now()
+                time_str = now.strftime('%H:%M:%S')
+                file.write(f'\n{name},{time_str}')
+    except FileNotFoundError:
+        # File doesn't exist, so create it and add the first record
+        with open(csv_path, 'w') as file:
+            now = datetime.now()
+            time_str = now.strftime('%H:%M:%S')
+            file.write(f'{name},{time_str}')
 
-encodeListKnow = findEncodings(image)
-print('Encoding done')
+def main():
+    # Load reference images and names for attendance
+    images, names = load_images_and_names(ATTENDANCE_DIR)
+    known_encodings = compute_face_encodings(images)
+    print("Face encodings computed for known faces.")
 
-cap = cv2.VideoCapture(0)
+    # Initialize webcam capture
+    cap = cv2.VideoCapture(0)
 
-while True:
-    success, img = cap.read()
-    imgs = cv2.resize(img,(0,0),None,0.25,0.25)
-    imgs = cv2.cvtColor(imgs, cv2.COLOR_BGR2RGB)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    facesCurFrame = face_recognition.face_locations(imgs)
-    encodesCurFrame = face_recognition.face_encodings(imgs, facesCurFrame)
+        # Reduce image size for faster processing
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
-    for encodeFace, faceLoc in zip(encodesCurFrame,facesCurFrame):
-        match = face_recognition.compare_faces(encodeListKnow,encodeFace)
-        faceD = face_recognition.face_distance(encodeListknow,encodeFace)
-        print(faceD)
-        matchI = np.argmin(faceD)
+        # Detect face locations and encodings in the current frame
+        face_locations = face_recognition.face_locations(rgb_small_frame)
+        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
 
-        if matches[matchI]:
-            name = className[matchI].upper()
-            print(name)
-            y1, x2, y2, x1 = faceLoc
-            cv2.rectangle(img(x1,y1),(x2,y2),(0,255,0),2)
-            cv2.rectangle(img,(x1,y2-35),(x2,y2),(0,255,0)cv2.FILLED)
-            cv2.putText(img,name,(x1+6,y2-6),cv2.FONT_HERSHEY_COMPLEX,1,(255,255,255),2)
+        for face_encoding, face_location in zip(face_encodings, face_locations):
+            matches = face_recognition.compare_faces(known_encodings, face_encoding)
+            face_distances = face_recognition.face_distance(known_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
 
-    cv2.imshow('Webcam',img)
-    cv2.waitKey(1)
-            
+            if matches[best_match_index]:
+                detected_name = names[best_match_index].upper()
+                record_attendance(detected_name)
 
-# e_musk = face_recognition.load_image_file('Image/ElonMusk.jpg')
-# e_musk = cv2.cvtColor(e_musk.cv2.COLOR_BGR2RGB)
-# e_test = face_recognition.load_image_file('Image/ElonTest.jpg')
-# e_test = cv2.cvtColor(e_test.cv2.COLOR_BGR2RGB)
+                # Scale back face location to original frame size
+                top, right, bottom, left = face_location
+                top *= 4
+                right *= 4
+                bottom *= 4
+                left *= 4
+
+                # Draw a rectangle around the face and label it with the name
+                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+                cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 255, 0), cv2.FILLED)
+                cv2.putText(frame, detected_name, (left + 6, bottom - 6),
+                            cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+
+        cv2.imshow('Webcam', frame)
+        # Press 'q' to exit the webcam loop
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()
+
