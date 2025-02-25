@@ -1,0 +1,111 @@
+# find dataset on google drive
+
+import numpy as np
+import pandas as pd
+import sklearn.datasets
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+def load_and_explore_data():
+    """
+    Loads the breast cancer dataset and prints summary information.
+    """
+    dataset = sklearn.datasets.load_breast_cancer()
+    df = pd.DataFrame(dataset.data, columns=dataset.feature_names)
+    df['label'] = dataset.target
+
+    # Display dataset information
+    print("Dataset Head:\n", df.head())
+    print("\nDataset Tail:\n", df.tail())
+    print("\nShape of DataFrame:", df.shape)
+    print("\nDataFrame Info:")
+    df.info()
+    print("\nMissing Values Per Column:\n", df.isnull().sum())
+    print("\nStatistical Summary:\n", df.describe())
+    print("\nLabel Value Counts:\n", df['label'].value_counts())
+    print("\nGroup Means by Label:\n", df.groupby('label').mean())
+
+    return df
+
+def split_dataset(df):
+    """
+    Separates features and label and splits the dataset into training and testing sets.
+    """
+    X = df.drop(columns='label', axis=1)
+    y = df['label']
+    
+    print("\nFeatures Preview:\n", X.head())
+    print("\nLabels Preview:\n", y.head())
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=2
+    )
+    print("\nTotal Features Shape:", X.shape)
+    print("Training Set Shape:", X_train.shape)
+    print("Test Set Shape:", X_test.shape)
+    
+    return X_train, X_test, y_train, y_test
+
+def train_logistic_model(X_train, y_train):
+    """
+    Trains a Logistic Regression model on the training data.
+    """
+    model = LogisticRegression(max_iter=10000)
+    model.fit(X_train, y_train)
+    return model
+
+def evaluate_model(model, X_train, y_train, X_test, y_test):
+    """
+    Evaluates the model on both the training and testing datasets.
+    """
+    train_preds = model.predict(X_train)
+    test_preds = model.predict(X_test)
+    
+    train_accuracy = accuracy_score(y_train, train_preds)
+    test_accuracy = accuracy_score(y_test, test_preds)
+    
+    print("\nAccuracy on Training Data =", train_accuracy)
+    print("Accuracy on Test Data =", test_accuracy)
+
+def predict_single_sample(model, sample):
+    """
+    Predicts the class for a single data instance.
+    """
+    sample_np = np.asarray(sample).reshape(1, -1)
+    prediction = model.predict(sample_np)
+    return prediction
+
+def main():
+    # Load and explore the dataset
+    df = load_and_explore_data()
+    
+    # Split the dataset into features and target, then into training and testing sets
+    X_train, X_test, y_train, y_test = split_dataset(df)
+    
+    # Train the logistic regression model
+    model = train_logistic_model(X_train, y_train)
+    
+    # Evaluate the model on training and testing data
+    evaluate_model(model, X_train, y_train, X_test, y_test)
+    
+    # Define a sample input (modify these values as needed)
+    sample_input = (
+        13.54, 14.36, 87.46, 566.3, 0.09779, 0.08129, 0.06664, 0.04781,
+        0.1885, 0.05766, 0.2699, 0.7886, 2.058, 23.56, 0.008462, 0.0146,
+        0.02387, 0.01315, 0.0198, 0.0023, 15.11, 19.26, 99.7, 711.2,
+        0.144, 0.1773, 0.239, 0.1288, 0.2977, 0.07259
+    )
+    
+    # Predict the outcome for the sample input
+    prediction = predict_single_sample(model, sample_input)
+    print("\nPrediction for the provided sample:", prediction)
+    
+    # Interpret the prediction
+    if prediction[0] == 0:
+        print("The tumor is predicted to be Malignant.")
+    else:
+        print("The tumor is predicted to be Benign.")
+
+if __name__ == '__main__':
+    main()
