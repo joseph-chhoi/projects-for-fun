@@ -1,0 +1,28 @@
+import cv2
+import numpy as np
+import face_recognition
+
+# facial recognition library
+# do the same for bill gates, elon musk, and other people
+
+e_musk = face_recognition.load_image_file('Image/ElonMusk.jpg')
+e_musk = cv2.cvtColor(e_musk.cv2.COLOR_BGR2RGB)
+e_test = face_recognition.load_image_file('Image/ElonTest.jpg')
+e_test = cv2.cvtColor(e_test.cv2.COLOR_BGR2RGB)
+
+facetest = face_recognition.face_locations(e_test)[0]
+encodet = face_recognition.face_encodings(e_test)[0]
+cv2.rectangle(e_test,(facetest[3],facetest[0]),(facetest[1],facetest[2]),(255,0,255),2)
+
+facetest1 = face_recognition.face_locations(e_test)[0]
+encodet1 = face_recognition.face_encodings(e_test)[0]
+cv2.rectangle(e_test,(facetest1[3],facetest1[0]),(facetest1[1],facetest[2]),(255,0,255),2)
+
+results = face_recognition.compare_faces([encodet],encodet1)
+faceD = face_recognition.face_distance([encodet],encodet1)
+print(result,faceD)
+cv2.putText(e_test, f'{results} {round(faceD[0], 2)}',(50,50),cv2.FONT_HERSHEY_COMPLEX,1,(0,0,255),2)
+
+cv2.imshow('Elon Musk', e_musk)
+cv2.imshow('Elon Musk', e_test)
+cv2.waitKey(0)
